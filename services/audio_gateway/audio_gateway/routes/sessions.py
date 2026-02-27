@@ -42,16 +42,17 @@ async def get_session_info(
 
 @router.get("/sessions", response_model=list[SessionResponse])
 async def list_sessions(
-    tenant_id: str = "default",
+    tenant_id: str | None = None,
     limit: int = 50,
     db: AsyncSession = Depends(get_session),
 ):
     stmt = (
         select(AudioSession)
-        .where(AudioSession.tenant_id == tenant_id)
         .order_by(AudioSession.created_at.desc())
         .limit(limit)
     )
+    if tenant_id:
+        stmt = stmt.where(AudioSession.tenant_id == tenant_id)
     result = await db.execute(stmt)
     sessions = result.scalars().all()
     return [_to_response(s) for s in sessions]

@@ -9,23 +9,14 @@ from fastapi.responses import PlainTextResponse, JSONResponse, StreamingResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from sap_common.config import settings
 from sap_common.db import get_session
-from sap_common.minio_client import download_bytes, get_minio_client
+from sap_common.minio_client import download_bytes
 from sap_common.models import (
     AudioSession,
     MusicAnalysis,
     MusicChordSegment,
     PerceptionFrame,
     TranscriptSegment,
-)
-from sap_common.schemas import (
-    ChordSegmentSchema,
-    MusicAnalysisSchema,
-    PerceptionFrameSchema,
-    SessionResponse,
-    SessionResult,
-    TranscriptSegmentSchema,
 )
 
 router = APIRouter()
@@ -36,6 +27,9 @@ async def get_result(
     session_id: uuid.UUID,
     db: AsyncSession = Depends(get_session),
 ):
+    """Return fused result shaped for the frontend:
+    { frames, chords, lyrics, key, bpm, beats, downbeats, time_signature }
+    """
     session = await db.get(AudioSession, session_id)
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
@@ -44,7 +38,7 @@ async def get_result(
     ma_stmt = select(MusicAnalysis).where(MusicAnalysis.session_id == session_id)
     ma = (await db.execute(ma_stmt)).scalar_one_or_none()
 
-    # Chords
+    # Chords — frontend expects {start, end, chord, confidence}
     chords_stmt = (
         select(MusicChordSegment)
         .where(MusicChordSegment.session_id == session_id)
@@ -52,7 +46,7 @@ async def get_result(
     )
     chords = (await db.execute(chords_stmt)).scalars().all()
 
-    # Transcript (final pass only)
+    # Transcript (final pass only) — flatten into LyricWord[]
     transcript_stmt = (
         select(TranscriptSegment)
         .where(
@@ -63,7 +57,28 @@ async def get_result(
     )
     transcript = (await db.execute(transcript_stmt)).scalars().all()
 
-    # Perception frames
+    # Build lyrics as individual words with timing
+    lyrics = []
+    for seg in transcript:
+        if seg.word_timestamps:
+            for w in (seg.word_timestamps if isinstance(seg.word_timestamps, list) else []):
+                if isinstance(w, dict):
+                    lyrics.append({
+                        "word": w.get("word", "").strip(),
+                        "start": w.get("start", seg.t_start),
+                        "end": w.get("end", seg.t_end),
+                        "confidence": w.get("probability"),
+                    })
+        else:
+            # Fallback: whole segment as one entry
+            lyrics.append({
+                "word": seg.text,
+                "start": seg.t_start,
+                "end": seg.t_end,
+                "confidence": seg.confidence,
+            })
+
+    # Perception frames — pass through frame_data (already has audio/music/speech)
     frames_stmt = (
         select(PerceptionFrame)
         .where(PerceptionFrame.session_id == session_id)
@@ -71,32 +86,27 @@ async def get_result(
     )
     frames = (await db.execute(frames_stmt)).scalars().all()
 
-    return SessionResult(
-        session=SessionResponse(
-            id=session.id,
-            tenant_id=session.tenant_id,
-            user_id=session.user_id,
-            status=session.status.value,
-            filename=session.filename,
-            mime_type=session.mime_type,
-            duration_sec=session.duration_sec,
-            sample_rate=session.sample_rate,
-            error_message=session.error_message,
-            created_at=session.created_at,
-            updated_at=session.updated_at,
-        ),
-        music_analysis=MusicAnalysisSchema.model_validate(ma) if ma else None,
-        chords=[ChordSegmentSchema.model_validate(c) for c in chords],
-        transcript=[TranscriptSegmentSchema.model_validate(t) for t in transcript],
-        frames=[
-            PerceptionFrameSchema(
-                session_id=str(f.session_id),
-                t=f.t,
-                **(f.frame_data or {}),
-            )
+    return {
+        "frames": [
+            {"t": f.t, **(f.frame_data or {})}
             for f in frames
         ],
-    )
+        "chords": [
+            {
+                "start": c.t_start,
+                "end": c.t_end,
+                "chord": c.label,
+                "confidence": c.confidence,
+            }
+            for c in chords
+        ],
+        "lyrics": lyrics,
+        "key": f"{ma.key_label}:{ma.key_scale}" if ma and ma.key_label else None,
+        "bpm": ma.tempo_bpm if ma else None,
+        "beats": ma.beat_times if ma else [],
+        "downbeats": ma.downbeat_times if ma else [],
+        "time_signature": ma.time_signature if ma else "4/4",
+    }
 
 
 @router.get("/sessions/{session_id}/export/lyrics.txt")
@@ -252,13 +262,9 @@ async def get_frames(
         "session_id": str(session_id),
         "t_start": t_start,
         "t_end": t_end,
-        "count": len(frames),
+        "total": len(frames),
         "frames": [
-            PerceptionFrameSchema(
-                session_id=str(f.session_id),
-                t=f.t,
-                **(f.frame_data or {}),
-            )
+            {"t": f.t, **(f.frame_data or {})}
             for f in frames
         ],
     }

@@ -28,7 +28,22 @@ class SessionResponse(BaseModel):
     updated_at: datetime
     ws_url: str | None = None
 
+    # Frontend-compatible aliases
+    @property
+    def name(self) -> str | None:
+        return self.filename
+
+    @property
+    def duration(self) -> float | None:
+        return self.duration_sec
+
     model_config = {"from_attributes": True}
+
+    def model_dump(self, **kwargs):
+        d = super().model_dump(**kwargs)
+        d["name"] = self.filename
+        d["duration"] = self.duration_sec
+        return d
 
 
 class SessionStatusUpdate(BaseModel):
