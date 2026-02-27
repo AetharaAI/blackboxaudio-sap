@@ -1,0 +1,19 @@
+[project]
+name = "audio-gateway"
+version = "0.1.0"
+description = "SAP Audio Gateway - REST API + WebSocket"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.109,<1",
+    "uvicorn[standard]>=0.27,<1",
+    "python-multipart>=0.0.6",
+    "httpx>=0.27,<1",
+    "sap-common",
+]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["audio_gateway*"]

@@ -1,0 +1,13 @@
+[project]
+name = "sap"
+version = "0.1.0"
+description = "Structured Acoustic Perception - audio as structured sensor data"
+requires-python = ">=3.11"
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100

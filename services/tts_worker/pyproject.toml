@@ -1,0 +1,16 @@
+[project]
+name = "sap-tts-worker"
+version = "0.1.0"
+description = "TTS worker for SAP - Chatterbox TTS Server client"
+requires-python = ">=3.11"
+dependencies = [
+    "sap-common",
+    "httpx>=0.27,<1",
+]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["tts_worker*"]

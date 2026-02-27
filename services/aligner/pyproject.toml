@@ -1,0 +1,16 @@
+[project]
+name = "aligner"
+version = "0.1.0"
+description = "SAP Aligner - Perception Frame fusion"
+requires-python = ">=3.11"
+dependencies = [
+    "numpy>=1.26,<2",
+    "sap-common",
+]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["aligner*"]
