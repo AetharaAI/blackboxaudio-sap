@@ -59,6 +59,7 @@ app.add_middleware(
     allow_origins=[
         "https://blackboxaudio.tech",
         "https://www.blackboxaudio.tech",
+        "https://asr.blackboxaudio.tech",
         "http://localhost:3000",
         "http://localhost:5173",
     ],
