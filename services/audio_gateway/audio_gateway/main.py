@@ -5,7 +5,6 @@ from contextlib import asynccontextmanager
 
 import valkey.asyncio as valkey_async
 from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
 
 from sap_common.config import settings
 from sap_common.db import engine
@@ -53,21 +52,8 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# CORS — allow browser frontends to access the API
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=[
-        "https://blackboxaudio.tech",
-        "https://www.blackboxaudio.tech",
-        "https://asr.blackboxaudio.tech",
-        "http://localhost:3000",
-        "http://localhost:5173",
-    ],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-    expose_headers=["Content-Range", "Accept-Ranges", "Content-Length"],
-)
+# CORS is handled by Nginx on the VM. Do not add CORSMiddleware here
+# to prevent duplicate CORS headers which cause browsers to reject the request.
 
 app.include_router(sessions_router, prefix="/v1/audio", tags=["sessions"])
 app.include_router(upload_router, prefix="/v1/audio", tags=["upload"])
