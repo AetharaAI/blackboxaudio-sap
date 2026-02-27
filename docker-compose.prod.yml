@@ -11,6 +11,7 @@ services:
   asr-worker:
     environment:
       NVIDIA_VISIBLE_DEVICES: "3"
+      HF_TOKEN: ${HF_TOKEN:-}
     deploy:
       resources:
         reservations:
@@ -19,4 +20,7 @@ services:
               device_ids: ["3"]
               capabilities: [gpu]
     volumes:
-      - /home/ubuntu/.cache/huggingface:/models
+      - hf-models:/models
+
+volumes:
+  hf-models:
