@@ -121,6 +121,64 @@ services:
       valkey: { condition: service_healthy }
       minio: { condition: service_healthy }
 
+  # ─── Voxstral ASR (Primary) ──────────────────────────────────────────────────
+
+  voxstral-vllm:
+    image: vllm/vllm-openai:nightly
+    command: >
+      vllm serve mistralai/Voxtral-Mini-4B-Realtime-2602
+      --compilation_config '{"cudagraph_mode": "PIECEWISE"}'
+    environment:
+      HF_TOKEN: ${HF_TOKEN:-}
+      CUDA_VISIBLE_DEVICES: "1"
+    ports: ["8001:8000"]
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids: ['1']
+              capabilities: [gpu]
+    volumes:
+      - vllm-models:/root/.cache/huggingface
+
+  voxstral-worker:
+    build:
+      context: .
+      dockerfile: services/voxstral_worker/Dockerfile
+    environment:
+      <<: *common-env
+      VLLM_BASE_URL: http://voxstral-vllm:8000
+    depends_on:
+      valkey: { condition: service_healthy }
+      minio: { condition: service_healthy }
+
+  # ─── Music Flamingo (Deep Analysis) ──────────────────────────────────────────
+
+  flamingo-worker:
+    build:
+      context: .
+      dockerfile: services/flamingo_worker/Dockerfile
+    environment:
+      <<: *common-env
+      FLAMINGO_MODEL_ID: nvidia/music-flamingo-2601-hf
+      CUDA_VISIBLE_DEVICES: "0"
+      HF_TOKEN: ${HF_TOKEN:-}
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids: ['0']
+              capabilities: [gpu]
+    depends_on:
+      valkey: { condition: service_healthy }
+      minio: { condition: service_healthy }
+    volumes:
+      - flamingo-models:/models
+
 volumes:
+  vllm-models:
+  flamingo-models:
   pgdata:
   miniodata:

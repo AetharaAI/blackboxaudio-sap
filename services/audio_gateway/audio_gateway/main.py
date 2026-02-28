@@ -17,6 +17,7 @@ from audio_gateway.routes.upload import router as upload_router
 from audio_gateway.routes.results import router as results_router
 from audio_gateway.routes.ws import router as ws_router
 from audio_gateway.routes.tts import router as tts_router
+from audio_gateway.routes.flamingo import router as flamingo_router
 from audio_gateway.ws_manager import ws_manager
 
 logger = logging.getLogger(__name__)
@@ -60,6 +61,7 @@ app.include_router(upload_router, prefix="/v1/audio", tags=["upload"])
 app.include_router(results_router, prefix="/v1/audio", tags=["results"])
 app.include_router(ws_router, tags=["websocket"])
 app.include_router(tts_router, prefix="/v1/audio", tags=["tts"])
+app.include_router(flamingo_router, prefix="/v1/audio", tags=["flamingo"])
 
 
 # Health checks

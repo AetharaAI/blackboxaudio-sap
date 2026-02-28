@@ -1,0 +1,17 @@
+[project]
+name = "flamingo-worker"
+version = "0.1.0"
+description = "SAP Music Flamingo Worker - Deep music understanding via NVIDIA Music Flamingo"
+requires-python = ">=3.11"
+dependencies = [
+    "numpy>=1.26,<2",
+    "soundfile>=0.12,<1",
+    "sap-common",
+]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["flamingo_worker*"]

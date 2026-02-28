@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 
 
 class ASRWorker(StreamWorker):
-    STREAM = "sap:asr:pending"
+    STREAM = "sap:asr:whisper:pending"  # Whisper is now fallback; Voxstral is primary on sap:asr:pending
     GROUP = "asr-workers"
 
     def __init__(self):

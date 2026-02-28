@@ -77,6 +77,9 @@ class AudioSession(Base):
     perception_frames: Mapped[list[PerceptionFrame]] = relationship(
         back_populates="session", cascade="all, delete-orphan"
     )
+    flamingo_analyses: Mapped[list[FlamingoAnalysis]] = relationship(
+        back_populates="session", cascade="all, delete-orphan"
+    )
 
     __table_args__ = (
         Index("idx_sessions_tenant", "tenant_id", "created_at"),
@@ -98,6 +101,7 @@ class TranscriptSegment(Base):
     text: Mapped[str] = mapped_column(Text, nullable=False)
     confidence: Mapped[float | None] = mapped_column(Float, nullable=True)
     speaker: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    source: Mapped[str] = mapped_column(String(32), nullable=False, default="whisper")
     is_final: Mapped[bool] = mapped_column(Boolean, default=False)
     word_timestamps: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
@@ -186,4 +190,28 @@ class PerceptionFrame(Base):
 
     __table_args__ = (
         Index("idx_frames_session", "session_id", "t"),
+    )
+
+
+class FlamingoAnalysis(Base):
+    __tablename__ = "flamingo_analysis"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    session_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("audio_sessions.id", ondelete="CASCADE"), nullable=False
+    )
+    prompt_key: Mapped[str] = mapped_column(String(64), nullable=False)
+    prompt_text: Mapped[str] = mapped_column(Text, nullable=False)
+    response: Mapped[str] = mapped_column(Text, nullable=False)
+    structured_data: Mapped[dict] = mapped_column(JSONB, default=dict)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+
+    session: Mapped[AudioSession] = relationship(back_populates="flamingo_analyses")
+
+    __table_args__ = (
+        Index("idx_flamingo_session", "session_id", "prompt_key"),
     )

@@ -52,15 +52,16 @@ class PreprocessWorker(StreamWorker):
             session_id, duration, len(audio),
         )
 
-        # Fan out to ASR and music analysis workers
+        # Fan out to ASR, music analysis, and Flamingo workers
         msg_data = {
             "session_id": session_id,
             "minio_key": pcm_key,
             "duration_sec": str(duration),
             "sample_rate": str(sr),
         }
-        await self.publish("sap:asr:pending", msg_data)
-        await self.publish("sap:music:pending", msg_data)
+        await self.publish("sap:asr:pending", msg_data)       # Voxstral primary (falls back to Whisper)
+        await self.publish("sap:music:pending", msg_data)      # Essentia + librosa
+        await self.publish("sap:flamingo:pending", msg_data)   # Music Flamingo deep analysis
 
         # Update session status
         await self.update_session_status(session_id, "analyzing")

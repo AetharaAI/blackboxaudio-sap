@@ -1,0 +1,17 @@
+[project]
+name = "voxstral-worker"
+version = "0.1.0"
+description = "SAP Voxstral ASR Worker - Primary streaming transcription via vLLM"
+requires-python = ">=3.11"
+dependencies = [
+    "numpy>=1.26,<2",
+    "aiohttp>=3.9,<4",
+    "sap-common",
+]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["voxstral_worker*"]

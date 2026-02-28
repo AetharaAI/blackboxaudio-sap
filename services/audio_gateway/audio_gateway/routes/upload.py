@@ -49,9 +49,10 @@ async def upload_audio(
             detail=f"Session is in state '{session.status.value}', cannot upload",
         )
 
-    # Validate file type
+    # Validate file type (strip codec params like "audio/webm;codecs=opus")
     content_type = file.content_type or "application/octet-stream"
-    if content_type not in ALLOWED_MIME_TYPES:
+    base_mime = content_type.split(";")[0].strip().lower()
+    if base_mime not in ALLOWED_MIME_TYPES:
         raise HTTPException(
             status_code=415,
             detail=f"Unsupported audio format: {content_type}",
