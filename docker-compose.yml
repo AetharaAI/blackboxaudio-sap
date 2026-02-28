@@ -127,7 +127,9 @@ services:
   # ─── Voxstral ASR (Primary) ──────────────────────────────────────────────────
 
   voxstral-vllm:
-    image: vllm/vllm-openai:nightly
+    build:
+      context: .
+      dockerfile: services/voxstral_vllm/Dockerfile
     command:
       - /models/mistralai/Voxtral-Mini-4B-Realtime-2602
       - --gpu-memory-utilization
