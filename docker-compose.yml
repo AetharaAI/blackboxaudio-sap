@@ -130,6 +130,10 @@ services:
     image: vllm/vllm-openai:nightly
     command:
       - /models/mistralai/Voxtral-Mini-4B-Realtime-2602
+      - --gpu-memory-utilization
+      - "0.70"
+      - --max-model-len
+      - "8192"
       - --compilation_config
       - '{"cudagraph_mode":"PIECEWISE"}'
     ports: ["8001:8000"]
