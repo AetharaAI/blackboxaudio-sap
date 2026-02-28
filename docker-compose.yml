@@ -126,11 +126,12 @@ services:
   voxstral-vllm:
     image: vllm/vllm-openai:nightly
     command: >
-      vllm serve mistralai/Voxtral-Mini-4B-Realtime-2602
+      vllm serve /models/mistralai/Voxtral-Mini-4B-Realtime-2602
       --compilation_config '{"cudagraph_mode": "PIECEWISE"}'
     environment:
       HF_TOKEN: ${HF_TOKEN:-}
       CUDA_VISIBLE_DEVICES: "1"
+      HF_HOME: /models
     ports: ["8001:8000"]
     deploy:
       resources:
@@ -140,7 +141,7 @@ services:
               device_ids: ['1']
               capabilities: [gpu]
     volumes:
-      - vllm-models:/root/.cache/huggingface
+      - /mnt/aetherpro/models/audio:/models:ro
 
   voxstral-worker:
     build:
@@ -161,9 +162,10 @@ services:
       dockerfile: services/flamingo_worker/Dockerfile
     environment:
       <<: *common-env
-      FLAMINGO_MODEL_ID: nvidia/music-flamingo-2601-hf
+      FLAMINGO_MODEL_ID: /models/nvidia/music-flamingo-2601-hf
       CUDA_VISIBLE_DEVICES: "0"
       HF_TOKEN: ${HF_TOKEN:-}
+      HF_HOME: /models
     deploy:
       resources:
         reservations:
@@ -175,10 +177,8 @@ services:
       valkey: { condition: service_healthy }
       minio: { condition: service_healthy }
     volumes:
-      - flamingo-models:/models
+      - /mnt/aetherpro/models/audio:/models:ro
 
 volumes:
-  vllm-models:
-  flamingo-models:
   pgdata:
   miniodata:
