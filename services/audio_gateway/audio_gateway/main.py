@@ -32,6 +32,20 @@ async def lifespan(app: FastAPI):
     # Create tables (dev convenience — use alembic in prod)
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+        # Migrate: add 'source' column to transcript_segments if missing
+        result = await conn.execute(
+            Base.metadata.tables["transcript_segments"]
+            .select()
+            .limit(0)
+        )
+        if "source" not in result.keys():
+            await conn.execute(
+                __import__("sqlalchemy").text(
+                    "ALTER TABLE transcript_segments "
+                    "ADD COLUMN source VARCHAR(32) NOT NULL DEFAULT 'whisper'"
+                )
+            )
+            logger.info("Migrated: added 'source' column to transcript_segments")
 
     # Ensure MinIO bucket
     await ensure_bucket()

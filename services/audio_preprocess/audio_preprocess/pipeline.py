@@ -26,8 +26,12 @@ def decode_to_pcm(input_path: str, target_sr: int = 44100) -> np.ndarray:
     return np.frombuffer(result.stdout, dtype=np.float32)
 
 
-def get_duration(input_path: str) -> float:
-    """Get audio duration in seconds using ffprobe."""
+def get_duration(input_path: str) -> float | None:
+    """Get audio duration in seconds using ffprobe.
+
+    Returns None if ffprobe can't determine duration (e.g. webm streams).
+    Caller should fall back to computing duration from PCM sample count.
+    """
     cmd = [
         "ffprobe",
         "-v", "quiet",
@@ -36,7 +40,11 @@ def get_duration(input_path: str) -> float:
         input_path,
     ]
     result = subprocess.run(cmd, capture_output=True, check=True, timeout=30)
-    return float(result.stdout.strip())
+    raw = result.stdout.strip()
+    try:
+        return float(raw)
+    except (ValueError, TypeError):
+        return None
 
 
 def highpass_filter(
@@ -63,6 +71,8 @@ def preprocess(input_path: str, sr: int = 44100) -> tuple[np.ndarray, float]:
     """
     duration = get_duration(input_path)
     audio = decode_to_pcm(input_path, sr)
+    if duration is None:
+        duration = len(audio) / sr
     audio = highpass_filter(audio, sr, cutoff=60.0)
     audio = normalize_rms(audio, target_rms=0.1)
     return audio, duration
