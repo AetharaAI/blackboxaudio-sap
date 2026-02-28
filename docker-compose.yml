@@ -129,8 +129,6 @@ services:
   voxstral-vllm:
     image: vllm/vllm-openai:nightly
     command:
-      - serve
-      - --model
       - /models/mistralai/Voxtral-Mini-4B-Realtime-2602
       - --compilation_config
       - '{"cudagraph_mode":"PIECEWISE"}'
