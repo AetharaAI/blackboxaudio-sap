@@ -133,7 +133,7 @@ services:
     command:
       - /models/mistralai/Voxtral-Mini-4B-Realtime-2602
       - --gpu-memory-utilization
-      - "0.70"
+      - "0.60"
       - --max-model-len
       - "8192"
       - --enforce-eager

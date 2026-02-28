@@ -10,6 +10,7 @@ from sap_common.config import settings
 from sap_common.db import engine
 from sap_common.health import add_health_routes
 from sap_common.minio_client import ensure_bucket, get_minio_client
+from sqlalchemy import text
 from sap_common.models import Base
 
 from audio_gateway.routes.sessions import router as sessions_router
@@ -33,18 +34,15 @@ async def lifespan(app: FastAPI):
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
         # Migrate: add 'source' column to transcript_segments if missing
-        result = await conn.execute(
-            Base.metadata.tables["transcript_segments"]
-            .select()
-            .limit(0)
-        )
-        if "source" not in result.keys():
-            await conn.execute(
-                __import__("sqlalchemy").text(
-                    "ALTER TABLE transcript_segments "
-                    "ADD COLUMN source VARCHAR(32) NOT NULL DEFAULT 'whisper'"
-                )
-            )
+        col_check = await conn.execute(text(
+            "SELECT 1 FROM information_schema.columns "
+            "WHERE table_name = 'transcript_segments' AND column_name = 'source'"
+        ))
+        if col_check.fetchone() is None:
+            await conn.execute(text(
+                "ALTER TABLE transcript_segments "
+                "ADD COLUMN source VARCHAR(32) NOT NULL DEFAULT 'whisper'"
+            ))
             logger.info("Migrated: added 'source' column to transcript_segments")
 
     # Ensure MinIO bucket
