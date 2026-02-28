@@ -1,0 +1,26 @@
+# Production override for L4-360 VM (l4-360-us-west-or-1)
+# Usage: docker compose -f docker-compose.yml -f docker-compose.prod.yml up --build
+#
+# GPU layout on this machine:
+#   GPU 0: text-embeddings (embed + reranker) + Chatterbox TTS (~9.2GB)
+#   GPU 1: VLLM Qwen-VL TP0 (~19.5GB)
+#   GPU 2: VLLM Qwen-VL TP1 (~19.5GB)
+#   GPU 3: SAP ASR Worker (~5.1GB) ← this file pins here
+
+services:
+  asr-worker:
+    environment:
+      NVIDIA_VISIBLE_DEVICES: "3"
+      HF_TOKEN: ${HF_TOKEN:-}
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids: ["3"]
+              capabilities: [gpu]
+    volumes:
+      - hf-models:/models
+
+volumes:
+  hf-models:
