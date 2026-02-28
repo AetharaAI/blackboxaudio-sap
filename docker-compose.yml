@@ -128,9 +128,12 @@ services:
 
   voxstral-vllm:
     image: vllm/vllm-openai:nightly
-    command: >
-      vllm serve /models/mistralai/Voxtral-Mini-4B-Realtime-2602
-      --compilation_config '{"cudagraph_mode": "PIECEWISE"}'
+    command:
+      - vllm
+      - serve
+      - /models/mistralai/Voxtral-Mini-4B-Realtime-2602
+      - --compilation_config
+      - '{"cudagraph_mode":"PIECEWISE"}'
     ports: ["8001:8000"]
     volumes:
       - /mnt/aetherpro/models/audio:/models:ro
