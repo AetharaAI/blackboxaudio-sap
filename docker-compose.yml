@@ -79,16 +79,19 @@ services:
       DEVICE: cuda
       COMPUTE_TYPE: float16
       HF_TOKEN: ${HF_TOKEN:-}
+      NVIDIA_VISIBLE_DEVICES: "0"
+      NVIDIA_DRIVER_CAPABILITIES: compute,utility
     deploy:
       resources:
         reservations:
           devices:
             - driver: nvidia
-              count: 1
+              device_ids: ["0"]
               capabilities: [gpu]
     depends_on:
       valkey: { condition: service_healthy }
       minio: { condition: service_healthy }
+    restart: unless-stopped
 
   music-worker:
     build:
@@ -128,20 +131,22 @@ services:
     command: >
       vllm serve /models/mistralai/Voxtral-Mini-4B-Realtime-2602
       --compilation_config '{"cudagraph_mode": "PIECEWISE"}'
-    environment:
-      HF_TOKEN: ${HF_TOKEN:-}
-      CUDA_VISIBLE_DEVICES: "1"
-      HF_HOME: /models
     ports: ["8001:8000"]
+    volumes:
+      - /mnt/aetherpro/models/audio:/models:ro
+    environment:
+      - HF_TOKEN=${HF_TOKEN:-}
+      - HF_HOME=/models
+      - NVIDIA_VISIBLE_DEVICES=0
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility
     deploy:
       resources:
         reservations:
           devices:
             - driver: nvidia
-              device_ids: ['1']
+              device_ids: ["0"]
               capabilities: [gpu]
-    volumes:
-      - /mnt/aetherpro/models/audio:/models:ro
+    restart: unless-stopped
 
   voxstral-worker:
     build:
@@ -160,24 +165,26 @@ services:
     build:
       context: .
       dockerfile: services/flamingo_worker/Dockerfile
+    volumes:
+      - /mnt/aetherpro/models/audio:/models:ro
     environment:
       <<: *common-env
       FLAMINGO_MODEL_ID: /models/nvidia/music-flamingo-2601-hf
-      CUDA_VISIBLE_DEVICES: "0"
       HF_TOKEN: ${HF_TOKEN:-}
       HF_HOME: /models
+      NVIDIA_VISIBLE_DEVICES: "0"
+      NVIDIA_DRIVER_CAPABILITIES: compute,utility
     deploy:
       resources:
         reservations:
           devices:
             - driver: nvidia
-              device_ids: ['0']
+              device_ids: ["2"]
               capabilities: [gpu]
     depends_on:
       valkey: { condition: service_healthy }
       minio: { condition: service_healthy }
-    volumes:
-      - /mnt/aetherpro/models/audio:/models:ro
+    restart: unless-stopped
 
 volumes:
   pgdata:
