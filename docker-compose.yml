@@ -136,8 +136,7 @@ services:
       - "0.70"
       - --max-model-len
       - "8192"
-      - --compilation_config
-      - '{"cudagraph_mode":"PIECEWISE"}'
+      - --enforce-eager
     ports: ["8001:8000"]
     volumes:
       - /mnt/aetherpro/models/audio:/models:ro
