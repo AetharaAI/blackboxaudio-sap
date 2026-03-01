@@ -12,11 +12,17 @@ x-common-env: &common-env
   LOG_LEVEL: ${LOG_LEVEL:-INFO}
   SAMPLE_RATE: ${SAMPLE_RATE:-44100}
 
+networks:
+  aether-audio:
+    name: aether-audio
+    driver: bridge
+
 services:
   # ─── Infrastructure (no host ports — internal only) ────────────────────────
 
   postgres:
     image: postgres:16-alpine
+    networks: [aether-audio]
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
@@ -30,6 +36,7 @@ services:
 
   valkey:
     image: valkey/valkey:8-alpine
+    networks: [aether-audio]
     command: ["valkey-server", "--port", "6385", "--requirepass", "${VALKEY_PASSWORD}", "--appendonly", "yes"]
     volumes: [valkeydata:/data]
     healthcheck:
@@ -40,6 +47,7 @@ services:
 
   minio:
     image: minio/minio:latest
+    networks: [aether-audio]
     command: server /data --address ":9100" --console-address ":9101"
     environment:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER}
@@ -59,6 +67,7 @@ services:
     build:
       context: .
       dockerfile: services/audio_gateway/Dockerfile
+    networks: [aether-audio]
     ports: ["127.0.0.1:8000:8000"]   # localhost only — nginx proxies this
     environment:
       <<: *common-env
@@ -72,6 +81,7 @@ services:
     build:
       context: .
       dockerfile: services/audio_preprocess/Dockerfile
+    networks: [aether-audio]
     environment:
       <<: *common-env
     depends_on:
@@ -83,6 +93,7 @@ services:
     build:
       context: .
       dockerfile: services/asr_worker/Dockerfile
+    networks: [aether-audio]
     environment:
       <<: *common-env
       WHISPER_STREAMING_MODEL: ${WHISPER_STREAMING_MODEL:-distil-large-v3}
@@ -108,6 +119,7 @@ services:
     build:
       context: .
       dockerfile: services/music_worker/Dockerfile
+    networks: [aether-audio]
     environment:
       <<: *common-env
     depends_on:
@@ -119,6 +131,7 @@ services:
     build:
       context: .
       dockerfile: services/aligner/Dockerfile
+    networks: [aether-audio]
     environment:
       <<: *common-env
     depends_on:
@@ -130,6 +143,7 @@ services:
     build:
       context: .
       dockerfile: services/tts_worker/Dockerfile
+    networks: [aether-audio]
     environment:
       <<: *common-env
       CHATTERBOX_URL: ${CHATTERBOX_URL:-https://tts.aetherpro.us}
@@ -144,6 +158,7 @@ services:
     build:
       context: .
       dockerfile: services/voxstral_vllm/Dockerfile
+    networks: [aether-audio]
     command:
       - /models/mistralai/Voxtral-Mini-4B-Realtime-2602
       - --gpu-memory-utilization
@@ -172,6 +187,7 @@ services:
     build:
       context: .
       dockerfile: services/voxstral_worker/Dockerfile
+    networks: [aether-audio]
     environment:
       <<: *common-env
       VLLM_BASE_URL: http://voxstral-vllm:8000
@@ -186,6 +202,7 @@ services:
     build:
       context: .
       dockerfile: services/flamingo_worker/Dockerfile
+    networks: [aether-audio]
     volumes:
       - /mnt/aetherpro/models/audio:/models:ro
     environment:
