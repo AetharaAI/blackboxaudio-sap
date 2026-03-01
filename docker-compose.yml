@@ -3,8 +3,8 @@
 
 x-common-env: &common-env
   POSTGRES_DSN: postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
-  VALKEY_URL: valkey://:${VALKEY_PASSWORD}@valkey:6379/0
-  MINIO_ENDPOINT: minio:9000
+  VALKEY_URL: valkey://:${VALKEY_PASSWORD}@valkey:6385/0
+  MINIO_ENDPOINT: minio:9100
   MINIO_ACCESS_KEY: ${MINIO_ROOT_USER}
   MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD}
   MINIO_BUCKET: sap-audio
@@ -30,23 +30,23 @@ services:
 
   valkey:
     image: valkey/valkey:8-alpine
-    command: ["valkey-server", "--requirepass", "${VALKEY_PASSWORD}", "--appendonly", "yes"]
+    command: ["valkey-server", "--port", "6385", "--requirepass", "${VALKEY_PASSWORD}", "--appendonly", "yes"]
     volumes: [valkeydata:/data]
     healthcheck:
-      test: ["CMD", "valkey-cli", "-a", "${VALKEY_PASSWORD}", "ping"]
+      test: ["CMD", "valkey-cli", "-p", "6385", "-a", "${VALKEY_PASSWORD}", "ping"]
       interval: 5s
       retries: 5
     restart: unless-stopped
 
   minio:
     image: minio/minio:latest
-    command: server /data --console-address ":9001"
+    command: server /data --address ":9100" --console-address ":9101"
     environment:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
     volumes: [miniodata:/data]
     healthcheck:
-      test: ["CMD", "mc", "ready", "local"]
+      test: ["CMD-SHELL", "curl -sf http://localhost:9100/minio/health/live"]
       interval: 10s
       timeout: 5s
       retries: 5

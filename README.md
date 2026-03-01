@@ -18,7 +18,7 @@ docker compose -f docker-compose.yml -f docker-compose.prod.yml up --build
 
 Gateway available at `http://localhost:8000`. API docs at `http://localhost:8000/docs`.
 
-MinIO console at `http://localhost:9001` (minioadmin/minioadmin).
+MinIO console at `http://localhost:9101` (credentials in `.env`).
 
 ## Prerequisites
 
@@ -138,7 +138,7 @@ Existing containers on the VM:
 - `vllm-openai` (redwatch-qwen-vl) → port 8008
 - `text-embeddings-inference` x2 → ports 8080, 8081
 
-SAP ports (no conflicts): 8000 (gateway), 5433 (postgres), 6379 (valkey), 9000/9001 (minio)
+SAP ports (no conflicts): 8000 (gateway), 5433 (postgres), 6385 (valkey), 9100/9101 (minio)
 
 Use `docker-compose.prod.yml` to pin ASR to GPU 3 and mount the model cache:
 
@@ -220,8 +220,8 @@ If deploying on a smaller GPU (4-6GB), switch to int8 quantization:
 | Service | Port | GPU | Purpose |
 |---------|------|-----|---------|
 | `postgres` | 5433 | — | Session metadata, analysis results, frames |
-| `valkey` | 6379 | — | Message bus (streams), worker coordination |
-| `minio` | 9000/9001 | — | Audio file storage |
+| `valkey` | 6385 | — | Message bus (streams), worker coordination |
+| `minio` | 9100/9101 | — | Audio file storage |
 | `audio-gateway` | 8000 | — | REST API + WebSocket relay |
 | `audio-preprocess` | — | — | ffmpeg decode, normalize, HPF |
 | `asr-worker` | — | 1x GPU | Dual Whisper transcription |

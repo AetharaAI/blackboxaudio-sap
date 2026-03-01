@@ -8,10 +8,10 @@ class SAPSettings(BaseSettings):
     postgres_dsn: str = "postgresql+asyncpg://sap:sap@localhost:5433/sap"
 
     # Valkey / Redis
-    valkey_url: str = "valkey://localhost:6379/0"
+    valkey_url: str = "valkey://localhost:6385/0"
 
     # MinIO
-    minio_endpoint: str = "localhost:9000"
+    minio_endpoint: str = "localhost:9100"
     minio_access_key: str = "minioadmin"
     minio_secret_key: str = "minioadmin"
     minio_bucket: str = "sap-audio"
