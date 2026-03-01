@@ -175,9 +175,20 @@ class StreamWorker:
                             await self._handle_message(msg_id, data)
             except asyncio.CancelledError:
                 break
+            except valkey.ResponseError as e:
+                if "NOGROUP" in str(e):
+                    logger.warning(
+                        "Stream/group missing (Valkey restart?), recreating %s/%s",
+                        self.STREAM,
+                        self.GROUP,
+                    )
+                    await self._ensure_group()
+                else:
+                    logger.exception("Valkey error in consumer loop, retrying in 2s...")
+                    await asyncio.sleep(2)
             except Exception:
-                logger.exception("Error in consumer loop, retrying in 1s...")
-                await asyncio.sleep(1)
+                logger.exception("Error in consumer loop, retrying in 2s...")
+                await asyncio.sleep(2)
 
         # Cleanup
         if self._client:

@@ -139,9 +139,21 @@ class WebSocketManager:
 
             except asyncio.CancelledError:
                 break
+            except valkey_async.ResponseError as e:
+                if "NOGROUP" in str(e):
+                    logger.warning("Stream/group missing (Valkey restart?), recreating groups...")
+                    for stream in streams:
+                        try:
+                            await client.xgroup_create(stream, group, id="0", mkstream=True)
+                        except valkey_async.ResponseError as ge:
+                            if "BUSYGROUP" not in str(ge):
+                                raise
+                else:
+                    logger.exception("Valkey error in WebSocket relay loop")
+                    await asyncio.sleep(2)
             except Exception:
                 logger.exception("Error in WebSocket relay loop")
-                await asyncio.sleep(1)
+                await asyncio.sleep(2)
 
         await client.aclose()
 

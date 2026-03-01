@@ -1,43 +1,49 @@
+# ─── Shared Environment ──────────────────────────────────────────────────────
+# Credentials come from .env file (not committed to git)
+
 x-common-env: &common-env
-  POSTGRES_DSN: postgresql+asyncpg://sap:sap@postgres:5432/sap
-  VALKEY_URL: valkey://valkey:6379/0
+  POSTGRES_DSN: postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+  VALKEY_URL: valkey://:${VALKEY_PASSWORD}@valkey:6379/0
   MINIO_ENDPOINT: minio:9000
-  MINIO_ACCESS_KEY: minioadmin
-  MINIO_SECRET_KEY: minioadmin
+  MINIO_ACCESS_KEY: ${MINIO_ROOT_USER}
+  MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD}
   MINIO_BUCKET: sap-audio
   MINIO_SECURE: "false"
-  LOG_LEVEL: INFO
-  SAMPLE_RATE: "44100"
+  LOG_LEVEL: ${LOG_LEVEL:-INFO}
+  SAMPLE_RATE: ${SAMPLE_RATE:-44100}
 
 services:
+  # ─── Infrastructure (no host ports — internal only) ────────────────────────
+
   postgres:
     image: postgres:16-alpine
     environment:
-      POSTGRES_USER: sap
-      POSTGRES_PASSWORD: sap
-      POSTGRES_DB: sap
-    ports: ["5433:5432"]
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
     volumes: [pgdata:/var/lib/postgresql/data]
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U sap"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
       interval: 5s
       retries: 5
+    restart: unless-stopped
 
   valkey:
     image: valkey/valkey:8-alpine
-    ports: ["6379:6379"]
+    command: ["valkey-server", "--requirepass", "${VALKEY_PASSWORD}", "--appendonly", "yes"]
+    volumes: [valkeydata:/data]
     healthcheck:
-      test: ["CMD", "valkey-cli", "ping"]
+      test: ["CMD", "valkey-cli", "-a", "${VALKEY_PASSWORD}", "ping"]
       interval: 5s
       retries: 5
+    restart: unless-stopped
 
   minio:
     image: minio/minio:latest
     command: server /data --console-address ":9001"
-    ports: ["9000:9000", "9001:9001"]
     environment:
-      MINIO_ROOT_USER: minioadmin
-      MINIO_ROOT_PASSWORD: minioadmin
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
     volumes: [miniodata:/data]
     healthcheck:
       test: ["CMD", "mc", "ready", "local"]
@@ -45,18 +51,22 @@ services:
       timeout: 5s
       retries: 5
       start_period: 10s
+    restart: unless-stopped
+
+  # ─── Application Services ──────────────────────────────────────────────────
 
   audio-gateway:
     build:
       context: .
       dockerfile: services/audio_gateway/Dockerfile
-    ports: ["8000:8000"]
+    ports: ["127.0.0.1:8000:8000"]   # localhost only — nginx proxies this
     environment:
       <<: *common-env
     depends_on:
       postgres: { condition: service_healthy }
       valkey: { condition: service_healthy }
       minio: { condition: service_healthy }
+    restart: unless-stopped
 
   audio-preprocess:
     build:
@@ -67,6 +77,7 @@ services:
     depends_on:
       valkey: { condition: service_healthy }
       minio: { condition: service_healthy }
+    restart: unless-stopped
 
   asr-worker:
     build:
@@ -74,10 +85,10 @@ services:
       dockerfile: services/asr_worker/Dockerfile
     environment:
       <<: *common-env
-      WHISPER_STREAMING_MODEL: distil-large-v3
-      WHISPER_FINAL_MODEL: large-v3
-      DEVICE: cuda
-      COMPUTE_TYPE: float16
+      WHISPER_STREAMING_MODEL: ${WHISPER_STREAMING_MODEL:-distil-large-v3}
+      WHISPER_FINAL_MODEL: ${WHISPER_FINAL_MODEL:-large-v3}
+      DEVICE: ${DEVICE:-cuda}
+      COMPUTE_TYPE: ${COMPUTE_TYPE:-float16}
       HF_TOKEN: ${HF_TOKEN:-}
       NVIDIA_VISIBLE_DEVICES: "0"
       NVIDIA_DRIVER_CAPABILITIES: compute,utility
@@ -102,6 +113,7 @@ services:
     depends_on:
       valkey: { condition: service_healthy }
       minio: { condition: service_healthy }
+    restart: unless-stopped
 
   aligner:
     build:
@@ -112,6 +124,7 @@ services:
     depends_on:
       postgres: { condition: service_healthy }
       valkey: { condition: service_healthy }
+    restart: unless-stopped
 
   tts-worker:
     build:
@@ -119,12 +132,13 @@ services:
       dockerfile: services/tts_worker/Dockerfile
     environment:
       <<: *common-env
-      CHATTERBOX_URL: https://tts.aetherpro.us
+      CHATTERBOX_URL: ${CHATTERBOX_URL:-https://tts.aetherpro.us}
     depends_on:
       valkey: { condition: service_healthy }
       minio: { condition: service_healthy }
+    restart: unless-stopped
 
-  # ─── Voxstral ASR (Primary) ──────────────────────────────────────────────────
+  # ─── Voxstral ASR (Primary) ────────────────────────────────────────────────
 
   voxstral-vllm:
     build:
@@ -137,7 +151,7 @@ services:
       - --max-model-len
       - "8192"
       - --enforce-eager
-    ports: ["8001:8000"]
+    # No host port — voxstral-worker connects internally
     volumes:
       - /mnt/aetherpro/models/audio:/models:ro
     environment:
@@ -164,8 +178,9 @@ services:
     depends_on:
       valkey: { condition: service_healthy }
       minio: { condition: service_healthy }
+    restart: unless-stopped
 
-  # ─── Music Flamingo (Deep Analysis) ──────────────────────────────────────────
+  # ─── Music Flamingo (Deep Analysis) ────────────────────────────────────────
 
   flamingo-worker:
     build:
@@ -194,4 +209,5 @@ services:
 
 volumes:
   pgdata:
+  valkeydata:
   miniodata:
